@@ -1,0 +1,9 @@
+{
+    "name": "@kurguide/shared-types",
+    "version": "1.0.0",
+    "description": "Shared TypeScript definitions",
+    "main": "index.ts",
+    "dependencies": {
+        "typescript": "^5.5.0"
+    }
+}

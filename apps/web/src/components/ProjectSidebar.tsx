@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useCanvasStore, type Checkpoint } from '../store/canvasStore'
 import { useProjectStore } from '../store/projectStore'
 import { generateAllExports } from '../services/exportService'
+import { exportCanvasToPDF } from '../services/pdfExport'
 
 /* ═══════════════════════════════════════════════════════
    PROJECT SIDEBAR — Hafta 6+7+8
@@ -21,9 +22,10 @@ export function ProjectSidebar() {
     const [newName, setNewName] = useState('')
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editName, setEditName] = useState('')
-    const [exportFormat, setExportFormat] = useState<'docker' | 'claude' | 'json' | 'structure'>('docker')
+    const [exportFormat, setExportFormat] = useState<'docker' | 'claude' | 'json' | 'structure' | 'pdf'>('docker')
     const [copied, setCopied] = useState(false)
     const [importError, setImportError] = useState('')
+    const [pdfLoading, setPdfLoading] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     // Save current canvas to active project on every render tick
@@ -36,17 +38,17 @@ export function ProjectSidebar() {
         setCanvas(target.nodes, target.edges, target.checkpoints)
     }
 
-    const handleCreateProject = () => {
+    const handleCreateProject = async () => {
         if (!newName.trim()) return
-        saveCurrentProject(nodes, edges, checkpoints)
-        createProject(newName.trim())
+        await saveCurrentProject(nodes, edges, checkpoints)
+        await createProject(newName.trim())
         // New project starts with empty canvas
         setCanvas([], [], [])
         setNewName('')
         setCreating(false)
     }
 
-    const handleDeleteProject = (id: string, e: React.MouseEvent) => {
+    const handleDeleteProject = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation()
         if (projects.length <= 1) return
         if (id === activeProjectId) {
@@ -56,7 +58,7 @@ export function ProjectSidebar() {
                 setCanvas(next.nodes, next.edges, next.checkpoints)
             }
         }
-        deleteProject(id)
+        await deleteProject(id)
     }
 
     const handleRenameStart = (id: string, name: string, e: React.MouseEvent) => {
@@ -65,8 +67,8 @@ export function ProjectSidebar() {
         setEditName(name)
     }
 
-    const handleRenameCommit = () => {
-        if (editingId && editName.trim()) renameProject(editingId, editName.trim())
+    const handleRenameCommit = async () => {
+        if (editingId && editName.trim()) await renameProject(editingId, editName.trim())
         setEditingId(null)
         setEditName('')
     }
@@ -75,6 +77,7 @@ export function ProjectSidebar() {
     const activeProject = projects.find((p) => p.id === activeProjectId)
     const exportData = activeProject
         ? (() => {
+            if (exportFormat === 'pdf') return ''
             const merged = { ...activeProject, nodes, edges, checkpoints }
             const all = generateAllExports(merged)
             if (exportFormat === 'docker') return all.dockerCompose
@@ -83,6 +86,18 @@ export function ProjectSidebar() {
             return all.fileStructure
         })()
         : ''
+
+    const handlePdfExport = async () => {
+        if (!activeProject) return
+        setPdfLoading(true)
+        try {
+            await exportCanvasToPDF(activeProject.name)
+        } catch (err) {
+            console.error('PDF export failed:', err)
+        } finally {
+            setPdfLoading(false)
+        }
+    }
 
     const handleCopy = async () => {
         await navigator.clipboard.writeText(exportData)
@@ -106,9 +121,9 @@ export function ProjectSidebar() {
         const file = e.target.files?.[0]
         if (!file) return
         const reader = new FileReader()
-        reader.onload = (ev) => {
+        reader.onload = async (ev) => {
             try {
-                importProjectJSON(ev.target?.result as string)
+                await importProjectJSON(ev.target?.result as string)
                 setView('projects')
             } catch (err) {
                 setImportError(String(err))
@@ -311,6 +326,7 @@ export function ProjectSidebar() {
                                 { id: 'claude', label: 'CLAUDE.md' },
                                 { id: 'json', label: 'JSON' },
                                 { id: 'structure', label: 'Files' },
+                                { id: 'pdf', label: 'PDF' },
                             ] as const).map((f) => (
                                 <button
                                     key={f.id}
@@ -328,33 +344,48 @@ export function ProjectSidebar() {
                         </div>
                     </div>
 
-                    {/* Preview */}
-                    <div className="flex-1 overflow-y-auto mx-3 mb-2 rounded-md" style={{ background: 'var(--surface-base)', border: '1px solid var(--surface-border)' }}>
-                        <pre className="p-2 text-[7.5px] font-mono leading-relaxed whitespace-pre-wrap break-all"
-                            style={{ color: 'var(--txt-secondary)' }}>
-                            {exportData || '# No data yet'}
-                        </pre>
-                    </div>
+                    {exportFormat === 'pdf' ? (
+                        <div className="flex-1 flex items-center justify-center">
+                            <button
+                                onClick={handlePdfExport}
+                                disabled={pdfLoading}
+                                className="px-4 py-2 rounded-md text-[10px] font-mono transition-all disabled:opacity-40"
+                                style={{ color: 'var(--accent)', background: 'var(--accent-muted)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)' }}
+                            >
+                                {pdfLoading ? 'Capturing...' : '↓ Download PDF'}
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Preview */}
+                            <div className="flex-1 overflow-y-auto mx-3 mb-2 rounded-md" style={{ background: 'var(--surface-base)', border: '1px solid var(--surface-border)' }}>
+                                <pre className="p-2 text-[7.5px] font-mono leading-relaxed whitespace-pre-wrap break-all"
+                                    style={{ color: 'var(--txt-secondary)' }}>
+                                    {exportData || '# No data yet'}
+                                </pre>
+                            </div>
 
-                    {/* Actions */}
-                    <div className="px-3 pb-3 flex gap-1 shrink-0">
-                        <button
-                            onClick={handleCopy}
-                            className="flex-1 py-1.5 rounded-md text-[9px] font-mono transition-all"
-                            style={{ color: 'var(--accent)', background: 'var(--accent-muted)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)' }}
-                        >
-                            {copied ? '✓ Copied' : 'Copy'}
-                        </button>
-                        <button
-                            onClick={handleExportFile}
-                            className="flex-1 py-1.5 rounded-md text-[9px] font-mono transition-all"
-                            style={{ color: 'var(--txt-muted)', background: 'var(--surface-base)', border: '1px solid var(--surface-border)' }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--txt-primary)'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--txt-muted)'}
-                        >
-                            Download
-                        </button>
-                    </div>
+                            {/* Actions */}
+                            <div className="px-3 pb-3 flex gap-1 shrink-0">
+                                <button
+                                    onClick={handleCopy}
+                                    className="flex-1 py-1.5 rounded-md text-[9px] font-mono transition-all"
+                                    style={{ color: 'var(--accent)', background: 'var(--accent-muted)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)' }}
+                                >
+                                    {copied ? '✓ Copied' : 'Copy'}
+                                </button>
+                                <button
+                                    onClick={handleExportFile}
+                                    className="flex-1 py-1.5 rounded-md text-[9px] font-mono transition-all"
+                                    style={{ color: 'var(--txt-muted)', background: 'var(--surface-base)', border: '1px solid var(--surface-border)' }}
+                                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--txt-primary)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--txt-muted)'}
+                                >
+                                    Download
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
 

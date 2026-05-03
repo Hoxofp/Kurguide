@@ -1,4 +1,4 @@
-import { Router } from 'express'
+import { Router, type IRouter } from 'express'
 import { Graph } from '../models/Graph.js'
 
 /**
@@ -12,7 +12,7 @@ import { Graph } from '../models/Graph.js'
  *   DELETE /graphs/:id      → Delete a graph
  */
 
-const router = Router()
+const router: IRouter = Router()
 
 // List all graphs
 router.get('/', async (_req, res) => {

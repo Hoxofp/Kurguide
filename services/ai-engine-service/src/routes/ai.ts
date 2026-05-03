@@ -1,4 +1,4 @@
-import { Router } from 'express'
+import { Router, type IRouter } from 'express'
 import { aiQueue } from '../queue.js'
 
 /**
@@ -13,7 +13,7 @@ import { aiQueue } from '../queue.js'
  * poll for results. Later we'll switch to WebSockets for real-time push.
  */
 
-const router = Router()
+const router: IRouter = Router()
 
 // Submit a new AI generation request
 router.post('/generate', async (req, res) => {

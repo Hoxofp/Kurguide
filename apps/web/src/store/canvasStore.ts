@@ -111,35 +111,8 @@ export interface CanvasState {
 }
 
 /* ─── Sample data ───────────────────────────────────── */
-const sampleNodes: Node[] = [
-    {
-        id: 'gw-1', type: 'gateway', position: { x: 220, y: 0 },
-        data: { label: 'API Gateway', description: 'Entry point · port 4000', technologyId: 'express-gw', port: '4000', envVars: 'PORT=4000', notes: '' },
-    },
-    {
-        id: 'svc-canvas', type: 'service', position: { x: 100, y: 120 },
-        data: { label: 'Canvas Service', description: 'Graph CRUD · port 4001', technologyId: 'express', port: '4001', envVars: 'PORT=4001\nMONGO_URI=mongodb://localhost:27017', notes: '' },
-    },
-    {
-        id: 'svc-ai', type: 'service', position: { x: 340, y: 120 },
-        data: { label: 'AI Engine', description: 'Text-to-Node · port 4002', technologyId: 'express', port: '4002', envVars: 'PORT=4002\nGEMINI_API_KEY=', notes: '' },
-    },
-    {
-        id: 'db-mongo', type: 'database', position: { x: 100, y: 240 },
-        data: { label: 'MongoDB', description: 'Graph storage', technologyId: 'mongodb', port: '27017', envVars: 'MONGO_INITDB_ROOT_USERNAME=admin', notes: '' },
-    },
-    {
-        id: 'cache-redis', type: 'cache', position: { x: 340, y: 240 },
-        data: { label: 'Redis', description: 'Job queue · BullMQ', technologyId: 'redis', port: '6379', envVars: '', notes: '' },
-    },
-]
-
-const sampleEdges: Edge[] = [
-    { id: 'e-gw-canvas', source: 'gw-1', target: 'svc-canvas' },
-    { id: 'e-gw-ai', source: 'gw-1', target: 'svc-ai' },
-    { id: 'e-canvas-mongo', source: 'svc-canvas', target: 'db-mongo' },
-    { id: 'e-ai-redis', source: 'svc-ai', target: 'cache-redis' },
-]
+const sampleNodes: Node[] = []
+const sampleEdges: Edge[] = []
 
 /* ─── Equality: only track structural changes, ignore position ── */
 function stateEquality(

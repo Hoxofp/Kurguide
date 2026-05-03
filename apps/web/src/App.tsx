@@ -4,7 +4,6 @@ import {
     Background,
     Controls,
     MiniMap,
-    BackgroundVariant,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
@@ -27,13 +26,17 @@ export default function App() {
     const activeTheme = useThemeStore((s) => s.activeTheme)
     useKeyboard()
 
-    // On first mount: load the last active project's canvas into the store
+    const { fetchProjects } = useProjectStore()
+
+    // On first mount: fetch projects from the backend
     useEffect(() => {
-        const { activeProjectId, projects } = useProjectStore.getState()
-        const project = projects.find((p) => p.id === activeProjectId)
-        if (project && project.nodes.length > 0) {
-            setCanvas(project.nodes, project.edges, project.checkpoints)
-        }
+        fetchProjects().then(() => {
+            const { activeProjectId, projects } = useProjectStore.getState()
+            const project = projects.find((p) => p.id === activeProjectId)
+            if (project) {
+                setCanvas(project.nodes, project.edges, project.checkpoints)
+            }
+        })
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
@@ -85,8 +88,10 @@ export default function App() {
                         animated: true,
                     }}
                 >
-                    <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--surface-border)" />
-                    <Controls showInteractive={false} />
+                    {/* @ts-expect-error React 19 typing mismatch with React Flow */}
+                    <Background color="var(--surface-border)" gap={24} size={2} style={{ opacity: 0.5 }} />
+                    {/* @ts-expect-error React 19 typing mismatch with React Flow */}
+                    <Controls className="!bg-surface-secondary !border-surface-border !fill-txt-primary shadow-node" />
                     <MiniMap
                         nodeColor={(node) => {
                             switch (node.type) {

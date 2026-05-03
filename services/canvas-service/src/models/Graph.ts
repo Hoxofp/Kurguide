@@ -33,8 +33,8 @@ interface IGraph extends Document {
 const graphSchema = new Schema<IGraph>(
     {
         name: { type: String, required: true, default: 'Untitled Architecture' },
-        nodes: { type: [Schema.Types.Mixed], default: [] },
-        edges: { type: [Schema.Types.Mixed], default: [] },
+        nodes: [{ type: Schema.Types.Mixed }],
+        edges: [{ type: Schema.Types.Mixed }],
         ownerId: { type: String, required: true },
     },
     { timestamps: true }

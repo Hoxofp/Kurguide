@@ -32,6 +32,7 @@ export function BaseNode({ nodeId, data, icon, accentColor, selected }: BaseNode
             onClick={() => selectNode(nodeId)}
         >
             {/* ── Target Handle ── */}
+            {/* @ts-expect-error React 19 typing mismatch with React Flow */}
             <Handle
                 type="target"
                 position={Position.Top}
@@ -85,6 +86,7 @@ export function BaseNode({ nodeId, data, icon, accentColor, selected }: BaseNode
             )}
 
             {/* ── Source Handle ── */}
+            {/* @ts-expect-error React 19 typing mismatch with React Flow */}
             <Handle
                 type="source"
                 position={Position.Bottom}

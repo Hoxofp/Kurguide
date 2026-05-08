@@ -84,7 +84,7 @@ export default function App() {
                     onPaneClick={() => useUIStore.getState().closePanel()}
                     defaultEdgeOptions={{
                         style: { stroke: 'var(--surface-hover)', strokeWidth: 1.5 },
-                        type: 'smoothstep',
+                        type: 'default',
                         animated: true,
                     }}
                 >
@@ -99,6 +99,7 @@ export default function App() {
                                 case 'database': return '#44A194'
                                 case 'cache': return '#FF4400'
                                 case 'gateway': return '#44A194'
+                                case 'client': return '#2A85FF'
                                 default: return 'var(--surface-hover)'
                             }
                         }}

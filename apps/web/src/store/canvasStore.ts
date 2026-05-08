@@ -27,6 +27,15 @@ export interface TechOption {
 }
 
 export const TECH_CATALOG: TechOption[] = [
+    // Clients
+    { id: 'react', name: 'React', category: 'client', defaultPort: '3000', description: 'Web Frontend', specs: { language: 'TypeScript', latency: '-', scalability: 'Client-side', persistence: 'Local Storage' } },
+    { id: 'vue', name: 'Vue', category: 'client', defaultPort: '5173', description: 'Web Frontend', specs: { language: 'TypeScript', latency: '-', scalability: 'Client-side', persistence: 'Local Storage' } },
+    { id: 'angular', name: 'Angular', category: 'client', defaultPort: '4200', description: 'Web Frontend', specs: { language: 'TypeScript', latency: '-', scalability: 'Client-side', persistence: 'Local Storage' } },
+    { id: 'nextjs', name: 'Next.js', category: 'client', defaultPort: '3000', description: 'React Framework', specs: { language: 'TypeScript', latency: '-', scalability: 'Edge/Serverless', persistence: 'None' } },
+    { id: 'react-native', name: 'React Native', category: 'client', defaultPort: '8081', description: 'Mobile App', specs: { language: 'TypeScript', latency: '-', scalability: 'Client-side', persistence: 'AsyncStorage' } },
+    { id: 'ios', name: 'iOS App', category: 'client', defaultPort: '-', description: 'Native iOS', specs: { language: 'Swift', latency: '-', scalability: 'Client-side', persistence: 'CoreData' } },
+    { id: 'android', name: 'Android App', category: 'client', defaultPort: '-', description: 'Native Android', specs: { language: 'Kotlin', latency: '-', scalability: 'Client-side', persistence: 'Room' } },
+    { id: 'web', name: 'Web Client', category: 'client', defaultPort: '80', description: 'Generic Web Client', specs: { language: 'HTML/JS', latency: '-', scalability: 'Client-side', persistence: 'Cookies' } },
     // Gateways
     { id: 'nginx', name: 'Nginx', category: 'gateway', defaultPort: '80', description: 'High-performance reverse proxy & load balancer', specs: { language: 'C', latency: '~1ms', scalability: 'Horizontal', persistence: 'None' } },
     { id: 'kong', name: 'Kong', category: 'gateway', defaultPort: '8000', description: 'Cloud-native API gateway with plugin ecosystem', specs: { language: 'Lua/Go', latency: '~2ms', scalability: 'Horizontal', persistence: 'PostgreSQL' } },

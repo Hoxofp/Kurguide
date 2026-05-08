@@ -1,10 +1,10 @@
 import {
     View, Text, ScrollView, TouchableOpacity, TextInput,
-    StyleSheet, Alert, Animated, Pressable,
+    StyleSheet, Alert, Pressable,
 } from 'react-native'
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'expo-router'
-import { useAppStore, selectActiveProject, type Project } from '../../store/appStore'
+import { useAppStore, type Project } from '../../store/appStore'
 import { colors, spacing, radius, typography, shadows } from '../../theme/tokens'
 
 /* ═══════════════════════════════════════════════════

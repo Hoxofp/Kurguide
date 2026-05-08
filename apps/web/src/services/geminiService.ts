@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai'
 import type { Alternative } from '../store/canvasStore'
+import { getLayoutedElements } from './layout'
 
 export interface AIQuestion {
     id: string
@@ -22,10 +23,8 @@ const SYSTEM_PROMPT = `You are an elite Software Architecture AI. Your task is t
 # CORE DIRECTIVES
 1. **Diversity**: The 3 alternatives MUST represent fundamentally different architectural patterns (e.g., Modular Monolith, Event-Driven Microservices, CQRS, Serverless).
 2. **Realism**: Use real-world technologies, ports, and configuration environments. Do not use generic placeholders.
-3. **Strict Layout Math (CRITICAL)**: You MUST position nodes in a strict, non-overlapping grid to prevent visual spaghetti.
-   - Y-Axis Layers: Gateways ALWAYS at y: 100, Compute/Services ALWAYS at y: 300, Main Databases ALWAYS at y: 500, Caches/Queues ALWAYS at y: 650.
-   - X-Axis Spacing: Nodes on the same Y layer MUST be separated by exactly 250px (e.g., x: 100, 350, 600, 850). NEVER place two nodes at the same X/Y coordinate.
-4. **Edge Routing**: Edges must logically connect components (Gateway -> Service -> DB). You MUST set the edge type to "smoothstep".
+3. **Architecture Logic**: Ensure EVERY node is connected. Do not leave any nodes floating. Frontends/Clients MUST connect to a Gateway or Service. Services MUST connect to their respective Databases or Caches (e.g., Redis). Create a clear, continuous path from the Client down to the lowest database/cache. If a user explicitly asks to connect a Client directly to a Cache/Redis, you may do so.
+4. **Edge Routing**: Edges must logically connect components (Client -> Gateway -> Service -> DB/Cache). You MUST set the edge type to "smoothstep".
 
 # OUTPUT SCHEMA
 You must respond with ONLY a valid JSON array containing exactly 3 objects. Do not use markdown wrappers (\`\`\`json).
@@ -39,8 +38,8 @@ You must respond with ONLY a valid JSON array containing exactly 3 objects. Do n
     "nodes": [
       {
         "id": "gw-1",
-        "type": "gateway", // Options: gateway, service, database, cache
-        "position": { "x": 350, "y": 100 },
+        "type": "gateway", // Options: client, gateway, service, database, cache, queue, worker, frontend, loadbalancer, storage, api
+        "position": { "x": 0, "y": 0 }, // ALWAYS use 0,0. The layout engine will auto-calculate coordinates.
         "data": {
           "label": "API Gateway (Kong)",
           "description": "Handles routing and rate limiting.",
@@ -57,7 +56,6 @@ You must respond with ONLY a valid JSON array containing exactly 3 objects. Do n
         "id": "edge-1",
         "source": "gw-1",
         "target": "svc-1",
-        "type": "smoothstep",
         "animated": true,
         "className": "ghost"
       }
@@ -69,7 +67,7 @@ You must respond with ONLY a valid JSON array containing exactly 3 objects. Do n
 ]
 
 # TECHNOLOGY CATALOG
-For "technologyId", ONLY use exactly these values: nginx, kong, traefik, express, fastify, nestjs, spring-boot, django, go-fiber, mongodb, postgresql, mysql, supabase, dynamodb, redis, memcached, valkey, rabbitmq, kafka.`
+For "technologyId", ONLY use exactly these values: react, vue, angular, nextjs, react-native, ios, android, web, nginx, kong, traefik, express, fastify, nestjs, spring-boot, django, go-fiber, mongodb, postgresql, mysql, supabase, dynamodb, redis, memcached, valkey, rabbitmq, kafka.`
 
 const QUESTIONS_SYSTEM_PROMPT = `You are an elite Software Architecture AI. The user will provide a brief prompt describing an application they want to build.
 Your job is to generate EXACTLY 3 clarifying questions to determine their exact tech stack preferences, data models, and architectural tradeoffs.
@@ -78,6 +76,7 @@ CRITICAL INSTRUCTIONS:
 - The questions MUST be heavily focused on Tech Stack choices, Database preferences, and specific Frameworks (e.g., Node.js vs Go vs Spring, SQL vs NoSQL, REST vs GraphQL/gRPC).
 - Example: Instead of asking about generic 'budget', ask "What is your preferred backend ecosystem?" or "What is your primary data storage strategy?".
 - For each question, provide exactly 3 highly specific multiple-choice options that reference actual technologies.
+- VERY IMPORTANT: Inside the "label" of each option, you MUST briefly explain the trade-off of that choice in parentheses so the user understands the impact.
 
 Return ONLY a JSON object with this exact structure:
 {
@@ -86,9 +85,9 @@ Return ONLY a JSON object with this exact structure:
       "id": "q1",
       "question": "Which backend ecosystem does your team prefer?",
       "options": [
-        { "label": "TypeScript/Node.js (NestJS, Express, Fastify)", "value": "ts_node" },
-        { "label": "High Performance (Go, Rust)", "value": "go_rust" },
-        { "label": "Enterprise (Java/Spring, Python/Django)", "value": "enterprise" }
+        { "label": "TypeScript/Node.js (Trade-off: Huge ecosystem, but lower raw compute speed)", "value": "ts_node" },
+        { "label": "Go/Rust (Trade-off: Max performance, but harder to hire/learn)", "value": "go_rust" },
+        { "label": "Java/Spring (Trade-off: Enterprise proven, but heavy memory footprint)", "value": "enterprise" }
       ]
     }
   ]
@@ -149,7 +148,13 @@ export async function generateAlternatives(
                     parsed.map(a => `${a.name} (${a.nodes?.length || 0} nodes)`).join(', ')
                 )
 
-                return parsed
+                // Layout nodes
+                const layouted = parsed.map((alt) => {
+                    const { nodes, edges } = getLayoutedElements(alt.nodes || [], alt.edges || [], 'TB')
+                    return { ...alt, nodes, edges }
+                })
+
+                return layouted
             } catch (err: any) {
                 const msg = err?.message || ''
                 const is429 = msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED')
@@ -241,11 +246,13 @@ function generateMockAlternatives(_prompt: string): Alternative[] {
             name: 'Simple Monolith',
             description: 'Single deployable unit. Fast to develop, easy to debug. Best for small teams and MVPs.',
             nodes: [
+                { id: `client-${ts}`, type: 'client', position: { x: 400, y: -50 }, data: { label: 'React Web App', description: 'User-facing frontend', isGhost: true, technologyId: 'react', port: '3000', envVars: 'VITE_API_URL=http://localhost:80', notes: 'SPA architecture' } },
                 { id: `gw-${ts}`, type: 'gateway', position: { x: 400, y: 100 }, data: { label: 'Nginx', description: 'Reverse proxy & load balancer', isGhost: true, technologyId: 'nginx', port: '80', envVars: 'UPSTREAM=http://localhost:3000', notes: 'SSL termination + static file serving' } },
                 { id: `svc-${ts}`, type: 'service', position: { x: 400, y: 250 }, data: { label: 'Monolith API', description: 'All business logic in one service', isGhost: true, technologyId: 'express', port: '3000', envVars: 'DATABASE_URL=postgresql://localhost:5432/app\nJWT_SECRET=change-me', notes: 'Single Express.js process handling all routes' } },
                 { id: `db-${ts}`, type: 'database', position: { x: 400, y: 400 }, data: { label: 'PostgreSQL', description: 'Primary relational database', isGhost: true, technologyId: 'postgresql', port: '5432', envVars: 'POSTGRES_DB=app\nPOSTGRES_USER=admin', notes: 'ACID compliant, good for relational data' } },
             ] as any,
             edges: [
+                { id: `e0-${ts}`, source: `client-${ts}`, target: `gw-${ts}`, animated: true, className: 'ghost' },
                 { id: `e1-${ts}`, source: `gw-${ts}`, target: `svc-${ts}`, animated: true, className: 'ghost' },
                 { id: `e2-${ts}`, source: `svc-${ts}`, target: `db-${ts}`, animated: true, className: 'ghost' },
             ] as any,
@@ -256,6 +263,7 @@ function generateMockAlternatives(_prompt: string): Alternative[] {
             name: 'Microservices',
             description: 'Separated services for independent deployment. Better for larger teams with domain ownership.',
             nodes: [
+                { id: `client2-${ts}`, type: 'client', position: { x: 400, y: -50 }, data: { label: 'Next.js App', description: 'SSR Web App', isGhost: true, technologyId: 'nextjs', port: '3000', envVars: 'API_URL=http://api.internal:8000', notes: 'Server-side rendering' } },
                 { id: `gw2-${ts}`, type: 'gateway', position: { x: 400, y: 80 }, data: { label: 'API Gateway', description: 'Route-based request proxying', isGhost: true, technologyId: 'kong', port: '8000', envVars: 'KONG_DATABASE=postgres', notes: 'Plugin-based auth, rate limiting' } },
                 { id: `auth-${ts}`, type: 'service', position: { x: 200, y: 220 }, data: { label: 'Auth Service', description: 'JWT + OAuth2 authentication', isGhost: true, technologyId: 'express', port: '3001', envVars: 'JWT_SECRET=secret\nOAUTH_CLIENT_ID=xxx', notes: 'Stateless JWT validation' } },
                 { id: `core-${ts}`, type: 'service', position: { x: 400, y: 220 }, data: { label: 'Core Service', description: 'Main business logic', isGhost: true, technologyId: 'nestjs', port: '3002', envVars: 'DB_URL=mongodb://localhost:27017/core', notes: 'NestJS for structured domain logic' } },
@@ -264,6 +272,7 @@ function generateMockAlternatives(_prompt: string): Alternative[] {
                 { id: `db2-${ts}`, type: 'database', position: { x: 500, y: 400 }, data: { label: 'MongoDB', description: 'Core domain data', isGhost: true, technologyId: 'mongodb', port: '27017', envVars: 'MONGO_INITDB_DATABASE=core', notes: 'Flexible schema for domain entities' } },
             ] as any,
             edges: [
+                { id: `e2z-${ts}`, source: `client2-${ts}`, target: `gw2-${ts}`, animated: true, className: 'ghost' },
                 { id: `e2a-${ts}`, source: `gw2-${ts}`, target: `auth-${ts}`, animated: true, className: 'ghost' },
                 { id: `e2b-${ts}`, source: `gw2-${ts}`, target: `core-${ts}`, animated: true, className: 'ghost' },
                 { id: `e2c-${ts}`, source: `gw2-${ts}`, target: `users-${ts}`, animated: true, className: 'ghost' },
@@ -278,6 +287,7 @@ function generateMockAlternatives(_prompt: string): Alternative[] {
             name: 'High Performance',
             description: 'Microservices + caching + message queue. For high-throughput production systems.',
             nodes: [
+                { id: `client3-${ts}`, type: 'client', position: { x: 400, y: -50 }, data: { label: 'Mobile App', description: 'Native React Native', isGhost: true, technologyId: 'react-native', port: '8081', envVars: 'API_KEY=xxx', notes: 'Cross-platform app' } },
                 { id: `gw3-${ts}`, type: 'gateway', position: { x: 400, y: 80 }, data: { label: 'Traefik', description: 'Auto-discovery reverse proxy', isGhost: true, technologyId: 'traefik', port: '80', envVars: 'TRAEFIK_API=true', notes: 'Docker-native service discovery' } },
                 { id: `auth3-${ts}`, type: 'service', position: { x: 200, y: 220 }, data: { label: 'Auth Service', description: 'Authentication + session management', isGhost: true, technologyId: 'go-fiber', port: '3001', envVars: 'REDIS_URL=redis://localhost:6379', notes: 'Go for minimal latency on auth checks' } },
                 { id: `core3-${ts}`, type: 'service', position: { x: 400, y: 220 }, data: { label: 'Core Service', description: 'Business logic engine', isGhost: true, technologyId: 'nestjs', port: '3002', envVars: 'MONGO_URL=mongodb://localhost:27017/app', notes: 'TypeScript for maintainability' } },
@@ -287,6 +297,7 @@ function generateMockAlternatives(_prompt: string): Alternative[] {
                 { id: `db3b-${ts}`, type: 'database', position: { x: 600, y: 400 }, data: { label: 'MongoDB', description: 'Document store for logs/events', isGhost: true, technologyId: 'mongodb', port: '27017', envVars: 'MONGO_DB=events', notes: 'Flexible schema for event sourcing' } },
             ] as any,
             edges: [
+                { id: `e3z-${ts}`, source: `client3-${ts}`, target: `gw3-${ts}`, animated: true, className: 'ghost' },
                 { id: `e3a-${ts}`, source: `gw3-${ts}`, target: `auth3-${ts}`, animated: true, className: 'ghost' },
                 { id: `e3b-${ts}`, source: `gw3-${ts}`, target: `core3-${ts}`, animated: true, className: 'ghost' },
                 { id: `e3c-${ts}`, source: `auth3-${ts}`, target: `cache3-${ts}`, animated: true, className: 'ghost' },
